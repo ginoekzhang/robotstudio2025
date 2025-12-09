@@ -19,7 +19,7 @@ HIP_SWING = 10         # hip forward/back offset from neutral
 KNEE_LIFT = 6          # how far knee bends to lift the foot
 KNEE_DOWN = 4          # how much to "push" into the ground from neutral
 
-STEP_TIME = 0.8        # time for one diagonal pair's full cycle
+STEP_TIME = 1.0        # time for one diagonal pair's full cycle (seconds)
 PHASE_TIME = STEP_TIME / 4.0  # push, lift, swing, down each get 1/4
 
 # Offsets per servo ID (1–8) – your calibrated values
@@ -44,24 +44,27 @@ def clamp_angle(angle: float) -> int:
     return max(MIN_ANGLE, min(MAX_ANGLE, int(angle)))
 
 
-def set_servo_angle(servo: LX16A, angle: float):
+def set_servo_angle(servo: LX16A, angle: float, t: float):
     """
     Move a single servo with angle clamped to safe range and applying
-    per-servo offset.
+    per-servo offset, over time t (seconds).
     """
     sid = servo.get_id()
     if sid < 1 or sid > len(OFFSETS):
         raise ValueError(f"Servo ID {sid} has no defined offset.")
     offset = OFFSETS[sid - 1]
     angle_cmd = clamp_angle(angle + offset)
-    servo.move(angle_cmd)
+
+    # PyLX-16A expects time in *milliseconds*
+    move_time_ms = int(max(t, 0.0) * 1000)
+    servo.move(angle_cmd, move_time_ms)
 
 
 def set_leg(hip_servo: LX16A, knee_servo: LX16A,
-            hip_angle: float, knee_angle: float):
-    """Convenience for setting a leg's hip and knee."""
-    set_servo_angle(hip_servo, hip_angle)
-    set_servo_angle(knee_servo, knee_angle)
+            hip_angle: float, knee_angle: float, t: float):
+    """Convenience for setting a leg's hip and knee over time t."""
+    set_servo_angle(hip_servo, hip_angle, t)
+    set_servo_angle(knee_servo, knee_angle, t)
 
 
 def main():
@@ -74,7 +77,8 @@ def main():
         for s in servos.values():
             s.set_angle_limits(MIN_ANGLE, MAX_ANGLE)
     except ServoTimeoutError as e:
-        print(f"Servo {e.get_id()} is not responding. Exiting...")
+        # Adjust this if your exception object uses a different attribute
+        print(f"Servo {getattr(e, 'id_', '?')} is not responding. Exiting...")
         return
 
     # Convenience mapping: leg name -> (hip servo, knee servo)
@@ -83,9 +87,9 @@ def main():
         for name, ids in LEGS.items()
     }
 
-    # ---------- POSE HELPERS ----------
+    # ---------- POSE HELPERS (ALL TIMED) ----------
 
-    def leg_ground(name: str):
+    def leg_ground(name: str, t: float):
         """Leg on ground in neutral-ish support configuration."""
         hip, knee = leg_servos[name]
         if name in ("FR", "BR"):   # your non-mirrored side
@@ -93,17 +97,19 @@ def main():
                 hip,
                 knee,
                 HIP_NEUTRAL,
-                KNEE_NEUTRAL + KNEE_DOWN
+                KNEE_NEUTRAL + KNEE_DOWN,
+                t
             )
         else:
             set_leg(
                 hip,
                 knee,
                 HIP_NEUTRAL_MIRROR,
-                KNEE_NEUTRAL_MIRROR + KNEE_DOWN
+                KNEE_NEUTRAL_MIRROR + KNEE_DOWN,
+                t
             )
 
-    def leg_push(name: str):
+    def leg_push(name: str, t: float):
         """Leg on ground, hip slightly behind to generate thrust."""
         hip, knee = leg_servos[name]
         if name in ("FR", "BR"):
@@ -112,7 +118,8 @@ def main():
                 hip,
                 knee,
                 HIP_NEUTRAL - HIP_SWING,
-                KNEE_NEUTRAL + KNEE_DOWN
+                KNEE_NEUTRAL + KNEE_DOWN,
+                t
             )
         else:
             # mirrored: push = hip forward
@@ -120,10 +127,11 @@ def main():
                 hip,
                 knee,
                 HIP_NEUTRAL_MIRROR + HIP_SWING,
-                KNEE_NEUTRAL_MIRROR + KNEE_DOWN
+                KNEE_NEUTRAL_MIRROR + KNEE_DOWN,
+                t
             )
 
-    def leg_lift(name: str):
+    def leg_lift(name: str, t: float):
         """Leg lifting the foot off the ground (knee bent more)."""
         hip, knee = leg_servos[name]
         if name in ("FR", "BR"):
@@ -131,17 +139,19 @@ def main():
                 hip,
                 knee,
                 HIP_NEUTRAL - HIP_SWING,      # still back
-                KNEE_NEUTRAL - KNEE_LIFT      # lift foot
+                KNEE_NEUTRAL - KNEE_LIFT,     # lift foot
+                t
             )
         else:
             set_leg(
                 hip,
                 knee,
                 HIP_NEUTRAL_MIRROR + HIP_SWING,
-                KNEE_NEUTRAL_MIRROR - KNEE_LIFT
+                KNEE_NEUTRAL_MIRROR - KNEE_LIFT,
+                t
             )
 
-    def leg_swing(name: str):
+    def leg_swing(name: str, t: float):
         """Leg swung forward while lifted."""
         hip, knee = leg_servos[name]
         if name in ("FR", "BR"):
@@ -149,17 +159,19 @@ def main():
                 hip,
                 knee,
                 HIP_NEUTRAL + HIP_SWING,      # forward
-                KNEE_NEUTRAL - KNEE_LIFT
+                KNEE_NEUTRAL - KNEE_LIFT,
+                t
             )
         else:
             set_leg(
                 hip,
                 knee,
                 HIP_NEUTRAL_MIRROR - HIP_SWING,
-                KNEE_NEUTRAL_MIRROR - KNEE_LIFT
+                KNEE_NEUTRAL_MIRROR - KNEE_LIFT,
+                t
             )
 
-    def leg_down(name: str):
+    def leg_down(name: str, t: float):
         """Leg placing foot back on ground after swing."""
         hip, knee = leg_servos[name]
         if name in ("FR", "BR"):
@@ -167,19 +179,21 @@ def main():
                 hip,
                 knee,
                 HIP_NEUTRAL + HIP_SWING,          # still slightly forward
-                KNEE_NEUTRAL + KNEE_DOWN          # down to ground
+                KNEE_NEUTRAL + KNEE_DOWN,         # down to ground
+                t
             )
         else:
             set_leg(
                 hip,
                 knee,
                 HIP_NEUTRAL_MIRROR - HIP_SWING,
-                KNEE_NEUTRAL_MIRROR + KNEE_DOWN
+                KNEE_NEUTRAL_MIRROR + KNEE_DOWN,
+                t
             )
 
-    # Slightly different poses for support legs to "compensate"
+    # Support-leg helper poses (smaller motion)
 
-    def support_push(name: str):
+    def support_push(name: str, t: float):
         """
         Support leg pushing but not as extreme as swing leg.
         Think of this as a half-push to share load.
@@ -190,17 +204,19 @@ def main():
                 hip,
                 knee,
                 HIP_NEUTRAL - HIP_SWING / 2,
-                KNEE_NEUTRAL + KNEE_DOWN
+                KNEE_NEUTRAL + KNEE_DOWN,
+                t
             )
         else:
             set_leg(
                 hip,
                 knee,
                 HIP_NEUTRAL_MIRROR + HIP_SWING / 2,
-                KNEE_NEUTRAL_MIRROR + KNEE_DOWN
+                KNEE_NEUTRAL_MIRROR + KNEE_DOWN,
+                t
             )
 
-    def support_forward(name: str):
+    def support_forward(name: str, t: float):
         """
         Support leg slightly forward – used when swing legs are behind,
         so the body doesn't just sit on one diagonal.
@@ -211,25 +227,28 @@ def main():
                 hip,
                 knee,
                 HIP_NEUTRAL + HIP_SWING / 2,
-                KNEE_NEUTRAL + KNEE_DOWN
+                KNEE_NEUTRAL + KNEE_DOWN,
+                t
             )
         else:
             set_leg(
                 hip,
                 knee,
                 HIP_NEUTRAL_MIRROR - HIP_SWING / 2,
-                KNEE_NEUTRAL_MIRROR + KNEE_DOWN
+                KNEE_NEUTRAL_MIRROR + KNEE_DOWN,
+                t
             )
 
     # ---------- STAND NEUTRAL ----------
     def stand_neutral():
         for name in leg_servos.keys():
-            leg_ground(name)
-        time.sleep(1.0)
+            # slow-ish neutral move
+            leg_ground(name, 0.5)
+        time.sleep(0.6)
 
     stand_neutral()
-    time.sleep(3)
-    print("Starting two-leg trot gait with support compensation. Ctrl+C to stop.")
+    time.sleep(2.0)
+    print("Starting two-leg trot gait with timed motions. Ctrl+C to stop.")
 
     # Diagonal pairs:
     # Phase A: swing = (FL, BR), support = (FR, BL)
@@ -245,30 +264,30 @@ def main():
 
             # 1) PUSH: all 4 push, swing pair slightly more
             for leg in support_legs:
-                support_push(leg)
+                support_push(leg, PHASE_TIME)
             for leg in swing_legs:
-                leg_push(leg)
+                leg_push(leg, PHASE_TIME)
             time.sleep(PHASE_TIME)
 
             # 2) LIFT: swing legs lift, support legs keep pushing
             for leg in support_legs:
-                support_push(leg)
+                support_push(leg, PHASE_TIME)
             for leg in swing_legs:
-                leg_lift(leg)
+                leg_lift(leg, PHASE_TIME)
             time.sleep(PHASE_TIME)
 
             # 3) SWING: swing legs swing forward, support legs move toward neutral/forward
             for leg in support_legs:
-                support_forward(leg)
+                support_forward(leg, PHASE_TIME)
             for leg in swing_legs:
-                leg_swing(leg)
+                leg_swing(leg, PHASE_TIME)
             time.sleep(PHASE_TIME)
 
             # 4) DOWN: swing legs land in front, support legs neutral-ish
             for leg in support_legs:
-                leg_ground(leg)
+                leg_ground(leg, PHASE_TIME)
             for leg in swing_legs:
-                leg_down(leg)
+                leg_down(leg, PHASE_TIME)
             time.sleep(PHASE_TIME)
 
             # =====================================================
@@ -279,30 +298,30 @@ def main():
 
             # 1) PUSH
             for leg in support_legs:
-                support_push(leg)
+                support_push(leg, PHASE_TIME)
             for leg in swing_legs:
-                leg_push(leg)
+                leg_push(leg, PHASE_TIME)
             time.sleep(PHASE_TIME)
 
             # 2) LIFT
             for leg in support_legs:
-                support_push(leg)
+                support_push(leg, PHASE_TIME)
             for leg in swing_legs:
-                leg_lift(leg)
+                leg_lift(leg, PHASE_TIME)
             time.sleep(PHASE_TIME)
 
             # 3) SWING
             for leg in support_legs:
-                support_forward(leg)
+                support_forward(leg, PHASE_TIME)
             for leg in swing_legs:
-                leg_swing(leg)
+                leg_swing(leg, PHASE_TIME)
             time.sleep(PHASE_TIME)
 
             # 4) DOWN
             for leg in support_legs:
-                leg_ground(leg)
+                leg_ground(leg, PHASE_TIME)
             for leg in swing_legs:
-                leg_down(leg)
+                leg_down(leg, PHASE_TIME)
             time.sleep(PHASE_TIME)
 
     except KeyboardInterrupt:
