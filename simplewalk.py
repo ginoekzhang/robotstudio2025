@@ -219,3 +219,23 @@ def main():
                 for leg in support_legs:
                     leg_ground(leg)
                 leg_swing(swing_leg)
+                time.sleep(PHASE_TIME)
+
+                # --- Phase 4: DOWN (swing leg touches down in front) ---
+                for leg in support_legs:
+                    leg_ground(leg)
+                leg_down(swing_leg)
+                time.sleep(PHASE_TIME)
+
+                # Optional small pause with all legs in ground/support pose
+                for leg in leg_servos.keys():
+                    leg_ground(leg)
+                time.sleep(PHASE_TIME * 0.5)
+
+    except KeyboardInterrupt:
+        print("\nStopping, returning to neutral.")
+        stand_neutral()
+
+
+if __name__ == "__main__":
+    main()
