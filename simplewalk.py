@@ -47,7 +47,7 @@ LEGS = {
 # ---------- HEALTH CHECK CONFIG ----------
 HEALTH_INTERVAL = 10.0     # seconds between health checks
 MAX_TEMP_C = 60.0          # overheat threshold
-MIN_VOLT = 5.0             # acceptable bus voltage range (approx)
+MIN_VOLT = 4.0             # acceptable bus voltage range (approx)
 MAX_VOLT = 7.5
 POSITION_TOL = 20.0        # deg away from last command considered "maybe stuck"
 MIN_CURRENT = 50.0         # mA, if get_current() is available (tune!)
