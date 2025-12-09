@@ -16,9 +16,9 @@ except ServoTimeoutError as e:
 t = 0
 
 time.sleep(3)
-servo1.move(35)
+servo1.move(205)
 time.sleep(3)
-servo2.move(35)
+servo2.move(205)
 
 #while True:
 #    servo1.move(0)
