@@ -23,7 +23,7 @@ def query_motor_positions(servos):
     all_ok = True
     for sid, s in servos.items():
         try:
-            pos = s.getPhysicalPos()
+            pos = s.get_physical_angle()
             print(f"servo {sid}: {pos:.1f} deg")
         except ServoError as e:
             print(f"ERROR: servo {sid} did not reply: {e}")
@@ -37,18 +37,18 @@ def query_motor_positions(servos):
 def enable_disable_test(servos):
     for sid, s in servos.items():
         try:
-            s.loadOrUnloadWrite(1)
+            s.enable_torque()
             time.sleep(0.05)
-            loaded = s.loadOrUnloadRead()
+            loaded = s.enable_torque()
             if loaded != 1:
                 print(f"ERROR: servo {sid}: could not enable")
             else:
                 print(f"servo {sid}: enabled")
               
             #disable  
-            s.loadOrUnloadWrite(0)
+            s.disable_torque()
             time.sleep(0.05)
-            loaded = s.loadOrUnloadRead()
+            loaded = s.disable_torque()
             if loaded != 0:
                 print(f"ERROR: servo {sid}: could not disable")
             else:
