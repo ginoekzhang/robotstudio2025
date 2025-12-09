@@ -20,6 +20,7 @@ def init_servos():
         s = LX16A(sid)
         s.set_angle_limits(ANGLE_MIN, ANGLE_MAX)
         servos[sid] = s
+    time.sleep(3) #wait a bit
     return servos
 
 def log_current_positions(servos):
