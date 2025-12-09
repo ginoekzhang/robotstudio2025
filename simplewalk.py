@@ -49,7 +49,7 @@ def set_servo_angle(servo: LX16A, angle: float):
     Move a single servo with angle clamped to safe range and applying
     per-servo offset.
     """
-    sid = servo.id_
+    sid = servo.get_id()
     if sid < 1 or sid > len(OFFSETS):
         raise ValueError(f"Servo ID {sid} has no defined offset.")
     offset = OFFSETS[sid - 1]
@@ -74,7 +74,7 @@ def main():
         for s in servos.values():
             s.set_angle_limits(MIN_ANGLE, MAX_ANGLE)
     except ServoTimeoutError as e:
-        print(f"Servo {e.id_} is not responding. Exiting...")
+        print(f"Servo {e.get_id()} is not responding. Exiting...")
         return
 
     # Convenience mapping: leg name -> (hip servo, knee servo)
