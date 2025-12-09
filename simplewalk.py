@@ -21,12 +21,12 @@ HIP_SWING_REAR  = 6     # rear legs push a bit softer
 KNEE_LIFT = 6           # how far knee bends to lift the foot
 KNEE_DOWN = 4           # how much to "push" into the ground from neutral
 
-STEP_TIME = 0.5         # time for one diagonal pair's full cycle (seconds)
+STEP_TIME = 0.8         # time for one diagonal pair's full cycle (seconds)
 PHASE_TIME = STEP_TIME / 4.0  # push, lift, swing, down each get 1/4
 
 # Lean forward: extra angle on both joints of front legs in neutral/support
 # BUT: FL is -, FR is + (per your note)
-FRONT_NEUTRAL_LEAN = 0  # magnitude of lean
+FRONT_NEUTRAL_LEAN = -5  # magnitude of lean
 
 # Offsets per servo ID (1–8) – your calibrated values
 OFFSETS = [0, 0, 10, -15, -30, -15, -25, -15]
