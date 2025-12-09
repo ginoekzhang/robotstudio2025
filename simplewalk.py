@@ -25,8 +25,8 @@ STEP_TIME = 0.8         # time for one diagonal pair's full cycle (seconds)
 PHASE_TIME = STEP_TIME / 4.0  # push, lift, swing, down each get 1/4
 
 # Lean forward: extra angle on both joints of front legs in neutral/support
-# NOTE: we interpret FRONT_NEUTRAL_LEAN as signed: FR +=, FL -=
-FRONT_NEUTRAL_LEAN = -5  # magnitude of lean
+# We interpret this as signed: FR +=, FL -=
+FRONT_NEUTRAL_LEAN = -5  # degrees
 
 # Offsets per servo ID (1–8) – your calibrated values
 OFFSETS = [0, 0, 10, -15, -30, -15, -25, -15]
@@ -44,13 +44,17 @@ LEGS = {
     "BL": {"hip": 7, "knee": 8},
 }
 
-# ---------- HEALTH CHECK CONFIG ----------
+# ---------- HEALTH / RUNTIME CONFIG ----------
 HEALTH_INTERVAL = 10.0     # seconds between health checks
+MAX_RUNTIME = 30.0         # walk for at most 30 seconds
+
 MAX_TEMP_C = 60.0          # overheat threshold
-MIN_VOLT = 4.0             # acceptable bus voltage range (approx)
+MIN_VOLT = 5.0             # acceptable bus voltage range (approx)
 MAX_VOLT = 7.5
 POSITION_TOL = 20.0        # deg away from last command considered "maybe stuck"
-MIN_CURRENT = 50.0         # mA, if get_current() is available (tune!)
+
+# If get_current() exists for your library, tune these:
+MIN_CURRENT = 50.0         # mA
 MAX_CURRENT = 2000.0       # mA
 
 # Stores last commanded angle (AFTER offsets, clamped) per servo ID
@@ -102,7 +106,7 @@ def _retry_read(func, retries=3, delay=0.05):
         try:
             return True, func()
         except ServoTimeoutError as e:
-            print(f"  ServoTimeoutError on attempt {attempt+1}: {e}")
+            print(f"  [COMM] ServoTimeoutError on attempt {attempt+1}: {e}")
             time.sleep(delay)
     # final failure
     return False, e  # last exception
@@ -165,17 +169,17 @@ def health_check(servos: dict) -> bool:
             ok, pos_or_exc = _retry_read(servo.get_physical_pos)
             if ok:
                 pos = pos_or_exc
-                print(f"  pos = {pos:.1f} deg")
-                # rough "stuck" check vs last command
                 expected = EXPECTED_ANGLES.get(sid)
                 if expected is not None:
+                    print(f"  pos = {pos:.1f} deg (expected ~{expected:.1f})")
                     if abs(pos - expected) > POSITION_TOL:
                         errors.append(
-                            f"Servo {sid}: position {pos:.1f} far from expected "
-                            f"{expected:.1f} (maybe stuck?)"
+                            f"[STUCK?] Servo {sid}: pos {pos:.1f} vs expected {expected:.1f}"
                         )
+                else:
+                    print(f"  pos = {pos:.1f} deg (no expected value yet)")
             else:
-                errors.append(f"Servo {sid}: comm error (position): {pos_or_exc}")
+                errors.append(f"[COMM FAIL] Servo {sid}: position: {pos_or_exc}")
                 continue  # skip temp/current for this servo
 
         # Temperature
@@ -185,9 +189,9 @@ def health_check(servos: dict) -> bool:
                 temp = temp_or_exc
                 print(f"  temp = {temp:.1f} C")
                 if temp > MAX_TEMP_C:
-                    errors.append(f"Servo {sid}: OVERHEAT ({temp:.1f} C)")
+                    errors.append(f"[HOT] Servo {sid}: {temp:.1f} C > {MAX_TEMP_C} C")
             else:
-                errors.append(f"Servo {sid}: comm error (temp): {temp_or_exc}")
+                errors.append(f"[COMM FAIL] Servo {sid}: temp: {temp_or_exc}")
 
         # Current (if API provides get_current)
         if hasattr(servo, "get_current"):
@@ -196,14 +200,12 @@ def health_check(servos: dict) -> bool:
                 current_ma = cur_or_exc
                 print(f"  current = {current_ma:.0f} mA")
                 if current_ma < MIN_CURRENT:
-                    errors.append(f"Servo {sid}: current too LOW ({current_ma:.0f} mA)")
+                    errors.append(f"[LOW I] Servo {sid}: {current_ma:.0f} mA")
                 elif current_ma > MAX_CURRENT:
-                    errors.append(f"Servo {sid}: current too HIGH ({current_ma:.0f} mA)")
+                    errors.append(f"[HIGH I] Servo {sid}: {current_ma:.0f} mA")
             else:
-                errors.append(f"Servo {sid}: comm error (current): {cur_or_exc}")
-        else:
-            # silently skip if not supported
-            pass
+                errors.append(f"[COMM FAIL] Servo {sid}: current: {cur_or_exc}")
+        # if not supported, silently ignore
 
     if errors:
         print("[Health] ❌ Problems detected:")
@@ -218,6 +220,62 @@ def health_check(servos: dict) -> bool:
         flash_led(servo, times=2)
 
     return True
+
+
+# ---------- SHUTDOWN PROCEDURE ----------
+
+def disable_motor_soft(servo: LX16A):
+    """Try a few possible disable APIs, depending on library implementation."""
+    if hasattr(servo, "disable_motor"):
+        servo.disable_motor()
+    elif hasattr(servo, "motor_off"):
+        servo.motor_off()
+    elif hasattr(servo, "load_or_unload_write"):
+        # 0 = unload / disable torque in many LX-16A libs
+        try:
+            servo.load_or_unload_write(0)
+        except TypeError:
+            pass
+
+
+def shutdown_procedure(servos: dict, leg_servos: dict, leg_ground_func):
+    """
+    Shutdown procedure:
+      1. Query motor positions (with retries).
+      2. Move all legs slowly to safe position.
+      3. Run a final health_check to verify they got there.
+      4. Disable motors.
+    """
+    print("\n[Shutdown] Starting shutdown procedure...")
+
+    # 1) Query current positions (just for logging / comm check)
+    for sid, servo in servos.items():
+        if hasattr(servo, "get_physical_pos"):
+            ok, pos_or_exc = _retry_read(servo.get_physical_pos)
+            if ok:
+                print(f"[Shutdown] Servo {sid} current pos: {pos_or_exc:.1f} deg")
+            else:
+                print(f"[Shutdown] Servo {sid} position read error: {pos_or_exc}")
+        else:
+            print(f"[Shutdown] Servo {sid} has no get_physical_pos()")
+
+    # 2) Move slowly to safe positions (use neutral ground pose)
+    print("[Shutdown] Moving to safe (neutral) pose...")
+    for name in leg_servos.keys():
+        leg_ground_func(name, 1.0)   # longer time for gentle move
+    time.sleep(1.2)
+
+    # 3) Check that motors got there (re-uses health_check logic)
+    print("[Shutdown] Verifying final positions / temps / currents...")
+    ok = health_check(servos)
+    if not ok:
+        print("[Shutdown] Some issues detected during shutdown health check.")
+
+    # 4) Disable motors
+    print("[Shutdown] Disabling all motors...")
+    for servo in servos.values():
+        disable_motor_soft(servo)
+    print("[Shutdown] All motors disabled. Robot is in safe state.\n")
 
 
 # ---------- MAIN WALKING CODE ----------
@@ -250,7 +308,7 @@ def main():
         return name in ("FL", "FR")
 
     def is_non_mirror(name: str) -> bool:
-        # Your earlier logic treated FR/BR as "non-mirrored"
+        # FR/BR are "non-mirrored"
         return name in ("FR", "BR")
 
     def apply_front_lean(name: str, hip_angle: float, knee_angle: float):
@@ -392,19 +450,27 @@ def main():
 
     stand_neutral()
     time.sleep(1.0)
-    print("Starting two-leg trot gait with health checks. Ctrl+C to stop.")
+    print("Starting two-leg trot gait with health + shutdown. Ctrl+C to stop.")
 
     last_health = time.time()
+    start_time = time.time()
 
     try:
         while True:
-            # maybe run health check before each full cycle
             now = time.time()
+
+            # stop after MAX_RUNTIME seconds
+            if now - start_time >= MAX_RUNTIME:
+                print("[Main] Max runtime reached, initiating shutdown.")
+                break
+
+            # periodic health check
             if now - last_health >= HEALTH_INTERVAL:
                 ok = health_check(servos)
                 last_health = now
                 if not ok:
-                    break  # abort gait
+                    print("[Main] Health check failed, initiating shutdown.")
+                    break
 
             # =====================================================
             # PHASE A: swing group = (FL, BR), support = (FR, BL)
@@ -475,11 +541,10 @@ def main():
             time.sleep(PHASE_TIME)
 
     except KeyboardInterrupt:
-        print("\nStopping (KeyboardInterrupt).")
+        print("\n[Main] KeyboardInterrupt caught, initiating shutdown.")
 
-    # on any exit, go back to neutral
-    print("Returning to neutral pose.")
-    stand_neutral()
+    # On any exit, run full shutdown procedure
+    shutdown_procedure(servos, leg_servos, leg_ground)
 
 
 if __name__ == "__main__":
