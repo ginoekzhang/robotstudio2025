@@ -23,7 +23,7 @@ STEP_TIME = 1       # time for one leg-group step (seconds)
 PHASE_TIME = STEP_TIME / 4.0  # push, lift, swing, down each get 1/4
 
 # Offsets per servo ID (1–8)
-OFFSETS = [0, 0, 10, -15, -25, -15, -25, -15]
+OFFSETS = [0, 0, 10, -15, -30, -15, -25, -15]
 
 # Servo IDs:
 # front left leg: [1 (hip), 2 (knee)]
