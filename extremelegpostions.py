@@ -35,14 +35,14 @@ t = 0
 #servo2.move(120)
 
 time.sleep(3)
-servo3.move(125)
-servo4.move(130)
+servo3.move(130)
+servo4.move(110)
 
 time.sleep(3)
-servo5.move(140)
-servo6.move(130)
+servo5.move(100)
+servo6.move(110)
 
 time.sleep(3)
-servo7.move(100)
+servo7.move(95)
 servo8.move(110)
 time.sleep(3)
