@@ -1,5 +1,5 @@
 import time
-from lx16a import *
+from pylx16a.lx16a import * 
 
 PORT = "/dev/ttyUSB0"
 SERVO_IDS = list(range(1, 9))
