@@ -6,10 +6,10 @@ PORT = "/dev/ttyUSB0"  # e.g. Linux
 
 # Neutral angles for inverted leg config
 HIP_NEUTRAL = 100
-KNEE_NEUTRAL = 160          # degrees
+KNEE_NEUTRAL = 150          # degrees
 
 HIP_NEUTRAL_MIRROR = 140
-KNEE_NEUTRAL_MIRROR = 90
+KNEE_NEUTRAL_MIRROR = 80
 
 MIN_ANGLE = 40
 MAX_ANGLE = 200
@@ -19,7 +19,7 @@ HIP_SWING = 25         # hip forward/back offset from neutral
 KNEE_LIFT = 20         # how far knee bends to lift the foot
 KNEE_DOWN = 10         # how much to "push" into the ground from neutral
 
-STEP_TIME = 0.40       # time for one leg-group step (seconds)
+STEP_TIME = 1       # time for one leg-group step (seconds)
 PHASE_TIME = STEP_TIME / 4.0  # push, lift, swing, down each get 1/4
 
 # Offsets per servo ID (1–8)
