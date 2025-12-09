@@ -58,7 +58,7 @@ def enable_disable_test(servos):
             print(f"ERROR: servo {sid} during enable/disable: {e}")
 
 
-def check_voltage(servos, min_mv=6000)
+def check_voltage(servos, min_mv=6000):
     s = servos[SERVO_IDS[0]]
     try:
         vin_mv = s.vInRead()
