@@ -18,12 +18,12 @@ t = 0
 time.sleep(3)
 servo1.move(75)
 time.sleep(3)
-servo2.move(165)
+servo2.move(205)
 time.sleep(3)
 
 while True:
     servo2.move(75)
-    time.sleep(0.5)
+    time.sleep(0.1)
     servo1.move(165)
     
     time.sleep(5)
