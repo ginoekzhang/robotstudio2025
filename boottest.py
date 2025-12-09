@@ -61,7 +61,7 @@ def enable_disable_test(servos):
 def check_voltage(servos, min_mv=6000):
     s = servos[SERVO_IDS[0]]
     try:
-        vin_mv = s.vInRead()
+        vin_mv = s.get_vin()
         vin_v = vin_mv / 1000.0
         print(f"bus voltage: {vin_v:.2f} V")
         if vin_mv < min_mv:
