@@ -250,14 +250,14 @@ def shutdown_procedure(servos: dict, leg_servos: dict, leg_ground_func):
 
     # 1) Query current positions (just for logging / comm check)
     for sid, servo in servos.items():
-        if hasattr(servo, "get_physical_pos"):
-            ok, pos_or_exc = _retry_read(servo.get_physical_pos)
+        if hasattr(servo, "get_physical_angle"):
+            ok, pos_or_exc = _retry_read(servo.get_physical_angle)
             if ok:
                 print(f"[Shutdown] Servo {sid} current pos: {pos_or_exc:.1f} deg")
             else:
                 print(f"[Shutdown] Servo {sid} position read error: {pos_or_exc}")
         else:
-            print(f"[Shutdown] Servo {sid} has no get_physical_pos()")
+            print(f"[Shutdown] Servo {sid} has no get_physical_angle()")
 
     # 2) Move slowly to safe positions (use neutral ground pose)
     print("[Shutdown] Moving to safe (neutral) pose...")
