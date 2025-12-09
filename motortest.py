@@ -15,8 +15,13 @@ except ServoTimeoutError as e:
 
 t = 0
 while True:
-    servo1.move(sin(t) * 60 + 60)
-    servo2.move(cos(t) * 60 + 60)
+    servo1.move(0)
+    time.sleep(1)
+    servo1.move(240)
+    time.sleep(1)
+    servo2.move(0)
+    time.sleep(1)
+    servo2.move(240)
 
     time.sleep(0.05)
     t += 0.1
