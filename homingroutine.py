@@ -18,7 +18,7 @@ def init_servos():
     servos = {}
     for sid in SERVO_IDS:
         s = LX16A(sid)
-        s.angleLimitWrite(ANGLE_MIN, ANGLE_MAX)
+        s.set_angle_limits(ANGLE_MIN, ANGLE_MAX)
         servos[sid] = s
     return servos
 
