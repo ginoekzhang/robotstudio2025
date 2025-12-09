@@ -21,20 +21,21 @@ HIP_SWING_REAR  = 6     # rear legs push a bit softer
 KNEE_LIFT = 6           # how far knee bends to lift the foot
 KNEE_DOWN = 4           # how much to "push" into the ground from neutral
 
-STEP_TIME = 1.0         # time for one diagonal pair's full cycle (seconds)
+STEP_TIME = 0.8         # time for one diagonal pair's full cycle (seconds)
 PHASE_TIME = STEP_TIME / 4.0  # push, lift, swing, down each get 1/4
 
-# Lean forward: extra angle on both joints of both front legs in neutral/support
-FRONT_NEUTRAL_LEAN = 5  # degrees added to hip and knee on FL/FR in ground pose
+# Lean forward: extra angle on both joints of front legs in neutral/support
+# BUT: FL is -, FR is + (per your note)
+FRONT_NEUTRAL_LEAN = 5  # magnitude of lean
 
 # Offsets per servo ID (1–8) – your calibrated values
 OFFSETS = [0, 0, 10, -15, -30, -15, -25, -15]
 
 # Servo IDs:
-# front left leg: [1 (hip), 2 (knee)]
+# front left leg:  [1 (hip), 2 (knee)]
 # front right leg: [3 (hip), 4 (knee)]
-# back right leg: [5 (hip), 6 (knee)]
-# back left leg: [7 (hip), 8 (knee)]
+# back right leg:  [5 (hip), 6 (knee)]
+# back left leg:   [7 (hip), 8 (knee)]
 
 LEGS = {
     "FL": {"hip": 1, "knee": 2},
@@ -96,17 +97,29 @@ def main():
     def is_front(name: str) -> bool:
         return name in ("FL", "FR")
 
-    def is_rear(name: str) -> bool:
-        return name in ("BR", "BL")
-
     def is_non_mirror(name: str) -> bool:
         # Your earlier logic treated FR/BR as "non-mirrored"
         return name in ("FR", "BR")
 
+    def apply_front_lean(name: str, hip_angle: float, knee_angle: float):
+        """
+        Apply forward lean for front legs:
+        - FL: -FRONT_NEUTRAL_LEAN
+        - FR: +FRONT_NEUTRAL_LEAN
+        Rear legs unchanged.
+        """
+        if name == "FR":
+            hip_angle += FRONT_NEUTRAL_LEAN
+            knee_angle += FRONT_NEUTRAL_LEAN
+        elif name == "FL":
+            hip_angle -= FRONT_NEUTRAL_LEAN
+            knee_angle -= FRONT_NEUTRAL_LEAN
+        return hip_angle, knee_angle
+
     def leg_ground(name: str, t: float):
         """
         Leg on ground in neutral-ish support configuration.
-        For FL/FR, add FRONT_NEUTRAL_LEAN to both joints to lean the robot forward.
+        For FL/FR, apply asymmetric lean via apply_front_lean().
         """
         hip, knee = leg_servos[name]
 
@@ -117,10 +130,8 @@ def main():
             hip_angle = HIP_NEUTRAL_MIRROR
             knee_angle = KNEE_NEUTRAL_MIRROR + KNEE_DOWN
 
-        # Apply forward lean on front legs (both hip and knee)
         if is_front(name):
-            hip_angle += FRONT_NEUTRAL_LEAN
-            knee_angle += FRONT_NEUTRAL_LEAN
+            hip_angle, knee_angle = apply_front_lean(name, hip_angle, knee_angle)
 
         set_leg(hip, knee, hip_angle, knee_angle, t)
 
@@ -133,11 +144,9 @@ def main():
         swing = HIP_SWING_FRONT if is_front(name) else HIP_SWING_REAR
 
         if is_non_mirror(name):
-            # non-mirror side: back = minus
             hip_angle = HIP_NEUTRAL - swing
             knee_angle = KNEE_NEUTRAL + KNEE_DOWN
         else:
-            # mirror side: back = plus
             hip_angle = HIP_NEUTRAL_MIRROR + swing
             knee_angle = KNEE_NEUTRAL_MIRROR + KNEE_DOWN
 
@@ -210,10 +219,8 @@ def main():
             hip_angle = HIP_NEUTRAL_MIRROR + swing
             knee_angle = KNEE_NEUTRAL_MIRROR + KNEE_DOWN
 
-        # Lean also applies to support front legs in ground-ish poses
         if is_front(name):
-            hip_angle += FRONT_NEUTRAL_LEAN
-            knee_angle += FRONT_NEUTRAL_LEAN
+            hip_angle, knee_angle = apply_front_lean(name, hip_angle, knee_angle)
 
         set_leg(hip, knee, hip_angle, knee_angle, t)
 
@@ -235,10 +242,8 @@ def main():
             hip_angle = HIP_NEUTRAL_MIRROR - swing
             knee_angle = KNEE_NEUTRAL_MIRROR + KNEE_DOWN
 
-        # Lean also applies here for front legs
         if is_front(name):
-            hip_angle += FRONT_NEUTRAL_LEAN
-            knee_angle += FRONT_NEUTRAL_LEAN
+            hip_angle, knee_angle = apply_front_lean(name, hip_angle, knee_angle)
 
         set_leg(hip, knee, hip_angle, knee_angle, t)
 
@@ -250,7 +255,7 @@ def main():
 
     stand_neutral()
     time.sleep(2.0)
-    print("Starting two-leg trot gait with forward-lean neutral. Ctrl+C to stop.")
+    print("Starting two-leg trot gait with asymmetric forward-lean. Ctrl+C to stop.")
 
     # Diagonal pairs:
     # Phase A: swing = (FL, BR), support = (FR, BL)
@@ -264,28 +269,28 @@ def main():
             swing_legs = ["FL", "BR"]
             support_legs = ["FR", "BL"]
 
-            # 1) PUSH: all 4 push, swing pair slightly more
+            # 1) PUSH
             for leg in support_legs:
                 support_push(leg, PHASE_TIME)
             for leg in swing_legs:
                 leg_push(leg, PHASE_TIME)
             time.sleep(PHASE_TIME)
 
-            # 2) LIFT: swing legs lift, support legs keep pushing
+            # 2) LIFT
             for leg in support_legs:
                 support_push(leg, PHASE_TIME)
             for leg in swing_legs:
                 leg_lift(leg, PHASE_TIME)
             time.sleep(PHASE_TIME)
 
-            # 3) SWING: swing legs swing forward, support legs move toward neutral/forward
+            # 3) SWING
             for leg in support_legs:
                 support_forward(leg, PHASE_TIME)
             for leg in swing_legs:
                 leg_swing(leg, PHASE_TIME)
             time.sleep(PHASE_TIME)
 
-            # 4) DOWN: swing legs land in front, support legs neutral-ish
+            # 4) DOWN
             for leg in support_legs:
                 leg_ground(leg, PHASE_TIME)
             for leg in swing_legs:
