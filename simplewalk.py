@@ -189,6 +189,7 @@ def main():
         time.sleep(1.0)
 
     stand_neutral()
+    time.sleep(5)
     print("Starting push → lift → swing → down trot gait. Ctrl+C to stop.")
 
     # ---------- GAIT LOOP ----------
