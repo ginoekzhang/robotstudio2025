@@ -23,14 +23,14 @@ try:
     servo8.set_angle_limits(0, 240)
 
         
-    servo3.set_angle_offset(-10)
-    servo4.set_angle_offset(+15)
+    servo3.set_angle_offset(+10, permanent=TRUE)
+    servo4.set_angle_offset(-15, permanent=TRUE)
     
-    servo5.set_angle_offset(+25)
-    servo6.set_angle_offset(+20)
+    servo5.set_angle_offset(-25, permanent=TRUE)
+    servo6.set_angle_offset(-20, permanent=TRUE)
     
-    servo7.set_angle_offset(+25)
-    servo8.set_angle_offset(+15)
+    servo7.set_angle_offset(-25, permanent=TRUE)
+    servo8.set_angle_offset(-15, permanent=TRUE)
 
 except ServoTimeoutError as e:
     print(f"Servo {e.id_} is not responding. Exiting...")
