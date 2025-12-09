@@ -24,22 +24,22 @@ t = 0
 
 time.sleep(3)
 servo1.move(100)
-servo2.move(180)
+servo2.move(160)
 servo3.move(140)
-servo4.move(60)
+servo4.move(80)
 time.sleep(3)
 
 while True:
-    servo2.move(60)
+    servo2.move(80)
     servo1.move(140)
-    servo4.move(180)
+    servo4.move(160)
     servo3.move(100)
     
     time.sleep(1)
     servo1.move(100)
-    servo2.move(180)
+    servo2.move(160)
     servo3.move(140)
-    servo4.move(60)
+    servo4.move(80)
     time.sleep(1)
 
 
