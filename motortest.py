@@ -12,6 +12,9 @@ try:
 except ServoTimeoutError as e:
     print(f"Servo {e.id_} is not responding. Exiting...")
     quit()
+except Error as e1:
+    print(f"Unexpected Error with servo {e.id_}. Exiting...")
+
 
 t = 0
 
