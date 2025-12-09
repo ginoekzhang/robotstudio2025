@@ -17,7 +17,7 @@ def init_servos():
         s = LX16A(sid)
         s.set_angle_limits(ANGLE_MIN, ANGLE_MAX)
         servos[sid] = s
-    time.sleep(3)#wait for a bit
+    time.sleep(1)#wait for a bit
     return servos
 
 def query_motor_positions(servos):
