@@ -165,8 +165,8 @@ def health_check(servos: dict) -> bool:
         print(f"[Health] Checking servo {sid}...")
 
         # Position / comm
-        if hasattr(servo, "get_physical_pos"):
-            ok, pos_or_exc = _retry_read(servo.get_physical_pos)
+        if hasattr(servo, "get_physical_angle"):
+            ok, pos_or_exc = _retry_read(servo.get_physical_angle)
             if ok:
                 pos = pos_or_exc
                 expected = EXPECTED_ANGLES.get(sid)
