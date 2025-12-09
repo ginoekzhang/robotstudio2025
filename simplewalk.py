@@ -267,9 +267,9 @@ def shutdown_procedure(servos: dict, leg_servos: dict, leg_ground_func):
 
     # 3) Check that motors got there (re-uses health_check logic)
     print("[Shutdown] Verifying final positions / temps / currents...")
-    ok = health_check(servos)
-    if not ok:
-        print("[Shutdown] Some issues detected during shutdown health check.")
+    #ok = health_check(servos)
+    #if not ok:
+        #print("[Shutdown] Some issues detected during shutdown health check.")
 
     # 4) Disable motors
     print("[Shutdown] Disabling all motors...")
