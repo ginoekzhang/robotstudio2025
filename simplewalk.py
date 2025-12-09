@@ -4,6 +4,7 @@ from pylx16a.lx16a import LX16A, ServoTimeoutError
 # ---------- CONFIG ----------
 PORT = "/dev/ttyUSB0"  # e.g. Linux
 
+# Neutral angles for inverted leg config
 HIP_NEUTRAL = 100
 KNEE_NEUTRAL = 160          # degrees
 
@@ -13,20 +14,16 @@ KNEE_NEUTRAL_MIRROR = 80
 MIN_ANGLE = 40
 MAX_ANGLE = 200
 
-HIP_SWING = 25         # how far hip moves forward/back from neutral
+# FL and BR are +forward, FR and BL are -forward
+HIP_SWING = 25         # hip forward/back offset from neutral
 KNEE_LIFT = 20         # how far knee bends to lift the foot
 KNEE_DOWN = 10         # how much to "push" into the ground from neutral
 
-STEP_TIME = 0.40       # time per main gait phase (seconds)
+STEP_TIME = 0.40       # time for one leg-group step (seconds)
+PHASE_TIME = STEP_TIME / 4.0  # push, lift, swing, down each get 1/4
 
-OFFSETS = [0,0,10,15,-25,-20,-25,-15]
-
-S3OFFSET = 10
-S4OFFSET = -15
-S5OFFSET = -25
-S6OFFSET = -20
-S7OFFSET = -25
-S8OFFSET = -15
+# Offsets per servo ID (1–8)
+OFFSETS = [0, 0, 10, 15, -25, -20, -25, -15]
 
 # Servo IDs:
 # front left leg: [1 (hip), 2 (knee)]
@@ -47,10 +44,17 @@ def clamp_angle(angle: float) -> int:
     return max(MIN_ANGLE, min(MAX_ANGLE, int(angle)))
 
 
-def set_servo_angle(servo: LX16A, angle: float, time: float):
-    """Move a single servo with angle clamped to safe range."""
-    angle = clamp_angle(angle)
-    servo.move(angle + OFFSETS[servo.id - 1], time)
+def set_servo_angle(servo: LX16A, angle: float):
+    """
+    Move a single servo with angle clamped to safe range and applying
+    per-servo offset.
+    """
+    sid = servo.id
+    if sid < 1 or sid > len(OFFSETS):
+        raise ValueError(f"Servo ID {sid} has no defined offset.")
+    offset = OFFSETS[sid - 1]
+    angle_cmd = clamp_angle(angle + offset)
+    servo.move(angle_cmd)
 
 
 def set_leg(hip_servo: LX16A, knee_servo: LX16A,
@@ -79,115 +83,190 @@ def main():
         for name, ids in LEGS.items()
     }
 
+    # ---------- HELPER: POSE HELPERS FOR EACH LEG ----------
+
+    def leg_ground(name: str):
+        """Leg on ground in neutral-ish support configuration."""
+        hip, knee = leg_servos[name]
+        if name in ("FL", "BR"):
+            # non-mirrored side
+            set_leg(
+                hip,
+                knee,
+                HIP_NEUTRAL,                  # neutral hip
+                KNEE_NEUTRAL + KNEE_DOWN      # slightly 'pushing' into ground
+            )
+        else:
+            # mirrored side
+            set_leg(
+                hip,
+                knee,
+                HIP_NEUTRAL_MIRROR,
+                KNEE_NEUTRAL_MIRROR + KNEE_DOWN
+            )
+
+    def leg_push(name: str):
+        """Leg on ground, hip slightly behind to generate thrust."""
+        hip, knee = leg_servos[name]
+        if name in ("FL", "BR"):
+            # +forward side: push = hip back
+            set_leg(
+                hip,
+                knee,
+                HIP_NEUTRAL - HIP_SWING,
+                KNEE_NEUTRAL + KNEE_DOWN
+            )
+        else:
+            # mirrored: push = hip forward (since their forward is opposite)
+            set_leg(
+                hip,
+                knee,
+                HIP_NEUTRAL_MIRROR + HIP_SWING,
+                KNEE_NEUTRAL_MIRROR + KNEE_DOWN
+            )
+
+    def leg_lift(name: str):
+        """Leg lifting the foot off the ground (knee bent more)."""
+        hip, knee = leg_servos[name]
+        if name in ("FL", "BR"):
+            # keep hip back during lift
+            set_leg(
+                hip,
+                knee,
+                HIP_NEUTRAL - HIP_SWING,
+                KNEE_NEUTRAL - KNEE_LIFT
+            )
+        else:
+            set_leg(
+                hip,
+                knee,
+                HIP_NEUTRAL_MIRROR + HIP_SWING,
+                KNEE_NEUTRAL_MIRROR - KNEE_LIFT
+            )
+
+    def leg_swing(name: str):
+        """Leg swung forward while lifted."""
+        hip, knee = leg_servos[name]
+        if name in ("FL", "BR"):
+            # +forward side: hip forward from neutral
+            set_leg(
+                hip,
+                knee,
+                HIP_NEUTRAL + HIP_SWING,
+                KNEE_NEUTRAL - KNEE_LIFT
+            )
+        else:
+            # mirrored: forward = neutral - HIP_SWING
+            set_leg(
+                hip,
+                knee,
+                HIP_NEUTRAL_MIRROR - HIP_SWING,
+                KNEE_NEUTRAL_MIRROR - KNEE_LIFT
+            )
+
+    def leg_down(name: str):
+        """Leg placing foot back on ground after swing."""
+        hip, knee = leg_servos[name]
+        if name in ("FL", "BR"):
+            set_leg(
+                hip,
+                knee,
+                HIP_NEUTRAL + HIP_SWING,          # stays slightly forward
+                KNEE_NEUTRAL + KNEE_DOWN          # down to ground
+            )
+        else:
+            set_leg(
+                hip,
+                knee,
+                HIP_NEUTRAL_MIRROR - HIP_SWING,
+                KNEE_NEUTRAL_MIRROR + KNEE_DOWN
+            )
+
     # ---------- HELPER: STAND NEUTRAL ----------
     def stand_neutral():
-        for name, (hip, knee) in leg_servos.items():
-            if name in ("FL", "BR"):
-                # e.g. left-forward / back-right use this neutral
-                set_leg(hip, knee, HIP_NEUTRAL, KNEE_NEUTRAL)
-            else:
-                # the mirrored ones
-                set_leg(hip, knee, HIP_NEUTRAL_MIRROR, KNEE_NEUTRAL_MIRROR)
+        for name in leg_servos.keys():
+            leg_ground(name)
         time.sleep(1.0)
 
     stand_neutral()
-
-    print("Starting simple trot gait. Ctrl+C to stop.")
+    print("Starting push → lift → swing → down trot gait. Ctrl+C to stop.")
 
     # ---------- GAIT LOOP ----------
     try:
         while True:
-            # ---- PHASE 1 ----
-            # Swing: FL & BR forward, lifted
-            # Support: FR & BL on ground, slightly back
-            # NOTE: You may need to flip +/- HIP_SWING depending on your geometry.
+            # =====================================================
+            # PHASE A: swing group = (FL, BR), support = (FR, BL)
+            # =====================================================
 
-            # Front-left (swing)
-            set_leg(
-                *leg_servos["FL"],
-                hip_angle=HIP_NEUTRAL - HIP_SWING,          # forward
-                knee_angle=KNEE_NEUTRAL - KNEE_LIFT          # lift foot
-            )
-            # Back-right (swing)
-            set_leg(
-                *leg_servos["BR"],
-                hip_angle=HIP_NEUTRAL - HIP_SWING,          # forward
-                knee_angle=KNEE_NEUTRAL - KNEE_LIFT
-            )
+            # 1) PUSH: everyone on ground, hips pushing backward
+            leg_push("FL")
+            leg_push("BR")
+            leg_push("FR")
+            leg_push("BL")
+            time.sleep(PHASE_TIME)
 
-            # Front-right (support)
-            set_leg(
-                *leg_servos["FR"],
-                hip_angle=HIP_NEUTRAL_MIRROR + HIP_SWING,          # backward
-                knee_angle=KNEE_NEUTRAL_MIRROR + KNEE_DOWN          # pushing into ground
-            )
-            # Back-left (support)
-            set_leg(
-                *leg_servos["BL"],
-                hip_angle=HIP_NEUTRAL_MIRROR + HIP_SWING,
-                knee_angle=KNEE_NEUTRAL_MIRROR + KNEE_DOWN
-            )
+            # 2) LIFT: FL & BR lift, FR & BL stay pushing
+            leg_lift("FL")
+            leg_lift("BR")
+            leg_push("FR")
+            leg_push("BL")
+            time.sleep(PHASE_TIME)
 
-            time.sleep(STEP_TIME)
+            # 3) SWING: FL & BR swing forward while lifted
+            leg_swing("FL")
+            leg_swing("BR")
+            leg_push("FR")
+            leg_push("BL")
+            time.sleep(PHASE_TIME)
 
-            # Optional: place swing legs down before switching phase
-            set_leg(
-                *leg_servos["FL"],
-                hip_angle=HIP_NEUTRAL - HIP_SWING,
-                knee_angle=HIP_NEUTRAL + KNEE_DOWN   # down to ground
-            )
-            set_leg(
-                *leg_servos["BR"],
-                hip_angle=HIP_NEUTRAL - HIP_SWING,
-                knee_angle=KNEE_NEUTRAL + KNEE_DOWN
-            )
-            time.sleep(STEP_TIME * 0.5)
+            # 4) DOWN: FL & BR touch down in front, FR & BL still pushing
+            leg_down("FL")
+            leg_down("BR")
+            leg_push("FR")
+            leg_push("BL")
+            time.sleep(PHASE_TIME)
 
-            # ---- PHASE 2 ----
-            # Swing: FR & BL forward, lifted
-            # Support: FL & BR on ground, slightly back
+            # Optionally bring FR/BL back to a more neutral support
+            leg_ground("FR")
+            leg_ground("BL")
+            time.sleep(PHASE_TIME * 0.5)
 
-            # Front-right (swing)
-            set_leg(
-                *leg_servos["FR"],
-                hip_angle=HIP_NEUTRAL_MIRROR - HIP_SWING,          # forward
-                knee_angle=KNEE_NEUTRAL_MIRROR - KNEE_LIFT
-            )
-            # Back-left (swing)
-            set_leg(
-                *leg_servos["BL"],
-                hip_angle=HIP_NEUTRAL_MIRROR - HIP_SWING,
-                knee_angle=KNEE_NEUTRAL_MIRROR - KNEE_LIFT
-            )
+            # =====================================================
+            # PHASE B: swing group = (FR, BL), support = (FL, BR)
+            # =====================================================
 
-            # Front-left (support)
-            set_leg(
-                *leg_servos["FL"],
-                hip_angle=HIP_NEUTRAL + HIP_SWING,
-                knee_angle=KNEE_NEUTRAL + KNEE_DOWN
-            )
-            # Back-right (support)
-            set_leg(
-                *leg_servos["BR"],
-                hip_angle=HIP_NEUTRAL + HIP_SWING,
-                knee_angle=KNEE_NEUTRAL + KNEE_DOWN
-            )
+            # 1) PUSH: everyone on ground, hips pushing backward
+            leg_push("FL")
+            leg_push("BR")
+            leg_push("FR")
+            leg_push("BL")
+            time.sleep(PHASE_TIME)
 
-            time.sleep(STEP_TIME)
+            # 2) LIFT: FR & BL lift, FL & BR stay pushing
+            leg_push("FL")
+            leg_push("BR")
+            leg_lift("FR")
+            leg_lift("BL")
+            time.sleep(PHASE_TIME)
 
-            # Place swing legs down
-            set_leg(
-                *leg_servos["FR"],
-                hip_angle=HIP_NEUTRAL_MIRROR - HIP_SWING,
-                knee_angle=KNEE_NEUTRAL_MIRROR + KNEE_DOWN
-            )
-            set_leg(
-                *leg_servos["BL"],
-                hip_angle=HIP_NEUTRAL_MIRROR - HIP_SWING,
-                knee_angle=KNEE_NEUTRAL_MIRROR + KNEE_DOWN
-            )
+            # 3) SWING: FR & BL swing forward while lifted
+            leg_push("FL")
+            leg_push("BR")
+            leg_swing("FR")
+            leg_swing("BL")
+            time.sleep(PHASE_TIME)
 
-            time.sleep(STEP_TIME * 0.5)
+            # 4) DOWN: FR & BL touch down in front, FL & BR still pushing
+            leg_push("FL")
+            leg_push("BR")
+            leg_down("FR")
+            leg_down("BL")
+            time.sleep(PHASE_TIME)
+
+            # Optionally bring FL/BR back to more neutral support
+            leg_ground("FL")
+            leg_ground("BR")
+            time.sleep(PHASE_TIME * 0.5)
 
     except KeyboardInterrupt:
         print("\nStopping, returning to neutral.")
