@@ -4,6 +4,7 @@ from lx16a import *   # uses the class file from the Dancing-Robot repo
 PORT = "/dev/ttyUSB0"       
 SERVO_IDS = list(range(1, 9))
 
+#based on servo pos on leg
 LED_SEQUENCE = [1, 2, 7, 8, 3, 4, 5, 6]
 
 ANGLE_MIN = 40
