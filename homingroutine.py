@@ -11,7 +11,7 @@ MOVE_TIME_MS = 1500
 POS_TOLERANCE_DEG = 5.0   
 
 MAX_SAFE_TEMP_C = 70      
-MIN_SAFE_VIN_MV = 6000    
+MIN_SAFE_VIN_MV = 5000    
 
 def init_servos():
     LX16A.initialize(PORT)
@@ -26,7 +26,7 @@ def log_current_positions(servos):
     print("current motor positions")
     for sid, s in servos.items():
         try:
-            pos = s.getPhysicalPos()
+            pos = s.get_physical_angle()
             print(f"servo {sid}: {pos:.1f} deg")
         except ServoError as e:
             print(f"ERROR: servo {sid} did not reply: {e}")
@@ -36,7 +36,7 @@ def check_temp_and_voltage(servos):
     ok = True
     for sid, s in servos.items():
         try:
-            temp = s.tempRead()
+            temp = s.get_temp()
             print(f"servo {sid}: {temp} C")
             if temp > MAX_SAFE_TEMP_C:
                 print(f"ERROR: servo {sid} over temperature")
@@ -47,7 +47,7 @@ def check_temp_and_voltage(servos):
 
     print("voltage check")
     try:
-        vin_mv = servos[SERVO_IDS[0]].vInRead()
+        vin_mv = servos[SERVO_IDS[0]].get_vin()
         vin_v = vin_mv / 1000.0
         print(f"bus voltage: {vin_v:.2f} V")
         if vin_mv < MIN_SAFE_VIN_MV:
@@ -63,7 +63,7 @@ def move_to_home(servos):
     print("moving to home pos")
     for sid, s in servos.items():
         try:
-            s.moveTimeWrite(HOME_ANGLE, MOVE_TIME_MS)
+            s.move(HOME_ANGLE, MOVE_TIME_MS)
         except ServoError as e:
             print(f"ERROR: servo {sid} moveTimeWrite failed: {e}")
     #wait
@@ -75,7 +75,7 @@ def verify_home(servos):
     all_ok = True
     for sid, s in servos.items():
         try:
-            pos = s.getPhysicalPos()
+            pos = s.get_physical_angle()
             error = abs(pos - HOME_ANGLE)
             print(f"servo {sid}: {pos:.1f} deg (error {error:.1f})")
             if error > POS_TOLERANCE_DEG:
