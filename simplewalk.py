@@ -88,7 +88,7 @@ def main():
     def leg_ground(name: str):
         """Leg on ground in neutral-ish support configuration."""
         hip, knee = leg_servos[name]
-        if name in ("FL", "BR"):
+        if name in ("FR", "BR"):
             # non-mirrored side
             set_leg(
                 hip,
@@ -108,7 +108,7 @@ def main():
     def leg_push(name: str):
         """Leg on ground, hip slightly behind to generate thrust."""
         hip, knee = leg_servos[name]
-        if name in ("FL", "BR"):
+        if name in ("FR", "BR"):
             # +forward side: push = hip back
             set_leg(
                 hip,
@@ -128,7 +128,7 @@ def main():
     def leg_lift(name: str):
         """Leg lifting the foot off the ground (knee bent more)."""
         hip, knee = leg_servos[name]
-        if name in ("FL", "BR"):
+        if name in ("FR", "BR"):
             # keep hip back during lift
             set_leg(
                 hip,
@@ -147,7 +147,7 @@ def main():
     def leg_swing(name: str):
         """Leg swung forward while lifted."""
         hip, knee = leg_servos[name]
-        if name in ("FL", "BR"):
+        if name in ("FR", "BR"):
             # +forward side: hip forward from neutral
             set_leg(
                 hip,
@@ -167,7 +167,7 @@ def main():
     def leg_down(name: str):
         """Leg placing foot back on ground after swing."""
         hip, knee = leg_servos[name]
-        if name in ("FL", "BR"):
+        if name in ("FR", "BR"):
             set_leg(
                 hip,
                 knee,
