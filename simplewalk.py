@@ -49,7 +49,7 @@ def set_servo_angle(servo: LX16A, angle: float):
     Move a single servo with angle clamped to safe range and applying
     per-servo offset.
     """
-    sid = servo.id
+    sid = servo.id_
     if sid < 1 or sid > len(OFFSETS):
         raise ValueError(f"Servo ID {sid} has no defined offset.")
     offset = OFFSETS[sid - 1]
