@@ -23,14 +23,12 @@ time.sleep(3)
 
 while True:
     servo2.move(75)
-    time.sleep(0.1)
     servo1.move(165)
     
-    time.sleep(1)
-    servo1.move(75)
     time.sleep(0.1)
-    servo2.move(165)
-    time.sleep(1)
+    servo1.move(75)
+    servo2.move(205)
+    time.sleep(0.1)
 
 
 #    time.sleep(3)
