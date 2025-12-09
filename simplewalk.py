@@ -19,7 +19,7 @@ HIP_SWING = 10         # hip forward/back offset from neutral
 KNEE_LIFT = 6          # how far knee bends to lift the foot
 KNEE_DOWN = 4          # how much to "push" into the ground from neutral
 
-STEP_TIME = 0.5        # time for one diagonal pair's full cycle
+STEP_TIME = 0.8        # time for one diagonal pair's full cycle
 PHASE_TIME = STEP_TIME / 4.0  # push, lift, swing, down each get 1/4
 
 # Offsets per servo ID (1–8) – your calibrated values
