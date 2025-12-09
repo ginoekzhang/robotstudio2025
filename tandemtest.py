@@ -23,23 +23,23 @@ except Error as e1:
 t = 0
 
 time.sleep(3)
-servo1.move(75)
-servo2.move(205)
-servo3.move(165)
-servo4.move(35)
+servo1.move(100)
+servo2.move(180)
+servo3.move(140)
+servo4.move(60)
 time.sleep(3)
 
 while True:
-    servo2.move(35)
-    servo1.move(165)
-    servo4.move(205)
-    servo3.move(75)
+    servo2.move(60)
+    servo1.move(140)
+    servo4.move(180)
+    servo3.move(100)
     
     time.sleep(1)
-    servo1.move(75)
-    servo2.move(205)
-    servo3.move(165)
-    servo4.move(35)
+    servo1.move(100)
+    servo2.move(180)
+    servo3.move(140)
+    servo4.move(60)
     time.sleep(1)
 
 
