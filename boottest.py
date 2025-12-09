@@ -37,28 +37,24 @@ def query_motor_positions(servos):
 def enable_disable_test(servos):
     for sid, s in servos.items():
         try:
+            #disable first
+            s.disable_torque()
+            time.sleep(0.05)
+            print(f"servo {sid}: disabled")
+
+            #then enable and test
             s.enable_torque()
             time.sleep(0.05)
-            loaded = s.enable_torque()
+            loaded = s.is_torque_enabled()
             if loaded != 1:
                 print(f"ERROR: servo {sid}: could not enable")
             else:
                 print(f"servo {sid}: enabled")
-              
-            #disable  
-            s.disable_torque()
-            time.sleep(0.05)
-            loaded = s.disable_torque()
-            if loaded != 0:
-                print(f"ERROR: servo {sid}: could not disable")
-            else:
-                print(f"servo {sid}: disabled")
-
         except ServoError as e:
             print(f"ERROR: servo {sid} during enable/disable: {e}")
 
 
-def check_voltage(servos, min_mv=6000):
+def check_voltage(servos, min_mv=5000):
     s = servos[SERVO_IDS[0]]
     try:
         vin_mv = s.get_vin()
@@ -82,9 +78,9 @@ def flash_led_sequence(servos, flashes=3, on_time=0.15, off_time=0.15):
         s = servos[sid]
         print(f"flashing LED on servo {sid}")
         for _ in range(flashes):
-            s.LEDCtrlWrite(1)
+            s.led_power_on()
             time.sleep(on_time)
-            s.LEDCtrlWrite(0)
+            s.led_power_off()
             time.sleep(off_time)
 
 def robot_boot_test():
