@@ -3,9 +3,13 @@ from pylx16a.lx16a import LX16A, ServoTimeoutError
 
 # ---------- CONFIG ----------
 PORT = "/dev/ttyUSB0"  # e.g. Linux
-# PORT = "COM3"       # e.g. Windows
 
-NEUTRAL = 120          # degrees
+HIP_NEUTRAL = 100
+KNEE_NEUTRAL = 160          # degrees
+
+HIP_NEUTRAL_MIRROR = 140
+KNEE_NEUTRAL_MIRROR = 80
+
 MIN_ANGLE = 40
 MAX_ANGLE = 200
 
@@ -14,6 +18,15 @@ KNEE_LIFT = 20         # how far knee bends to lift the foot
 KNEE_DOWN = 10         # how much to "push" into the ground from neutral
 
 STEP_TIME = 0.40       # time per main gait phase (seconds)
+
+OFFSETS = [0,0,10,15,-25,-20,-25,-15]
+
+S3OFFSET = 10
+S4OFFSET = -15
+S5OFFSET = -25
+S6OFFSET = -20
+S7OFFSET = -25
+S8OFFSET = -15
 
 # Servo IDs:
 # front left leg: [1 (hip), 2 (knee)]
@@ -34,10 +47,10 @@ def clamp_angle(angle: float) -> int:
     return max(MIN_ANGLE, min(MAX_ANGLE, int(angle)))
 
 
-def set_servo_angle(servo: LX16A, angle: float):
+def set_servo_angle(servo: LX16A, angle: float, time: float):
     """Move a single servo with angle clamped to safe range."""
     angle = clamp_angle(angle)
-    servo.move(angle)
+    servo.move(angle + OFFSETS[servo.id - 1], time)
 
 
 def set_leg(hip_servo: LX16A, knee_servo: LX16A,
@@ -68,8 +81,13 @@ def main():
 
     # ---------- HELPER: STAND NEUTRAL ----------
     def stand_neutral():
-        for hip, knee in leg_servos.values():
-            set_leg(hip, knee, NEUTRAL, NEUTRAL)
+        for name, (hip, knee) in leg_servos.items():
+            if name in ("FL", "BR"):
+                # e.g. left-forward / back-right use this neutral
+                set_leg(hip, knee, HIP_NEUTRAL, KNEE_NEUTRAL)
+            else:
+                # the mirrored ones
+                set_leg(hip, knee, HIP_NEUTRAL_MIRROR, KNEE_NEUTRAL_MIRROR)
         time.sleep(1.0)
 
     stand_neutral()
@@ -87,27 +105,27 @@ def main():
             # Front-left (swing)
             set_leg(
                 *leg_servos["FL"],
-                hip_angle=NEUTRAL - HIP_SWING,          # forward
-                knee_angle=NEUTRAL - KNEE_LIFT          # lift foot
+                hip_angle=HIP_NEUTRAL - HIP_SWING,          # forward
+                knee_angle=KNEE_NEUTRAL - KNEE_LIFT          # lift foot
             )
             # Back-right (swing)
             set_leg(
                 *leg_servos["BR"],
-                hip_angle=NEUTRAL - HIP_SWING,          # forward
-                knee_angle=NEUTRAL - KNEE_LIFT
+                hip_angle=HIP_NEUTRAL - HIP_SWING,          # forward
+                knee_angle=KNEE_NEUTRAL - KNEE_LIFT
             )
 
             # Front-right (support)
             set_leg(
                 *leg_servos["FR"],
-                hip_angle=NEUTRAL + HIP_SWING,          # backward
-                knee_angle=NEUTRAL + KNEE_DOWN          # pushing into ground
+                hip_angle=HIP_NEUTRAL_MIRROR + HIP_SWING,          # backward
+                knee_angle=KNEE_NEUTRAL_MIRROR + KNEE_DOWN          # pushing into ground
             )
             # Back-left (support)
             set_leg(
                 *leg_servos["BL"],
-                hip_angle=NEUTRAL + HIP_SWING,
-                knee_angle=NEUTRAL + KNEE_DOWN
+                hip_angle=HIP_NEUTRAL_MIRROR + HIP_SWING,
+                knee_angle=KNEE_NEUTRAL_MIRROR + KNEE_DOWN
             )
 
             time.sleep(STEP_TIME)
@@ -115,13 +133,13 @@ def main():
             # Optional: place swing legs down before switching phase
             set_leg(
                 *leg_servos["FL"],
-                hip_angle=NEUTRAL - HIP_SWING,
-                knee_angle=NEUTRAL + KNEE_DOWN   # down to ground
+                hip_angle=HIP_NEUTRAL - HIP_SWING,
+                knee_angle=HIP_NEUTRAL + KNEE_DOWN   # down to ground
             )
             set_leg(
                 *leg_servos["BR"],
-                hip_angle=NEUTRAL - HIP_SWING,
-                knee_angle=NEUTRAL + KNEE_DOWN
+                hip_angle=HIP_NEUTRAL - HIP_SWING,
+                knee_angle=KNEE_NEUTRAL + KNEE_DOWN
             )
             time.sleep(STEP_TIME * 0.5)
 
@@ -132,27 +150,27 @@ def main():
             # Front-right (swing)
             set_leg(
                 *leg_servos["FR"],
-                hip_angle=NEUTRAL - HIP_SWING,          # forward
-                knee_angle=NEUTRAL - KNEE_LIFT
+                hip_angle=HIP_NEUTRAL_MIRROR - HIP_SWING,          # forward
+                knee_angle=KNEE_NEUTRAL_MIRROR - KNEE_LIFT
             )
             # Back-left (swing)
             set_leg(
                 *leg_servos["BL"],
-                hip_angle=NEUTRAL - HIP_SWING,
-                knee_angle=NEUTRAL - KNEE_LIFT
+                hip_angle=HIP_NEUTRAL_MIRROR - HIP_SWING,
+                knee_angle=KNEE_NEUTRAL_MIRROR - KNEE_LIFT
             )
 
             # Front-left (support)
             set_leg(
                 *leg_servos["FL"],
-                hip_angle=NEUTRAL + HIP_SWING,
-                knee_angle=NEUTRAL + KNEE_DOWN
+                hip_angle=HIP_NEUTRAL + HIP_SWING,
+                knee_angle=KNEE_NEUTRAL + KNEE_DOWN
             )
             # Back-right (support)
             set_leg(
                 *leg_servos["BR"],
-                hip_angle=NEUTRAL + HIP_SWING,
-                knee_angle=NEUTRAL + KNEE_DOWN
+                hip_angle=HIP_NEUTRAL + HIP_SWING,
+                knee_angle=KNEE_NEUTRAL + KNEE_DOWN
             )
 
             time.sleep(STEP_TIME)
@@ -160,13 +178,13 @@ def main():
             # Place swing legs down
             set_leg(
                 *leg_servos["FR"],
-                hip_angle=NEUTRAL - HIP_SWING,
-                knee_angle=NEUTRAL + KNEE_DOWN
+                hip_angle=HIP_NEUTRAL_MIRROR - HIP_SWING,
+                knee_angle=KNEE_NEUTRAL_MIRROR + KNEE_DOWN
             )
             set_leg(
                 *leg_servos["BL"],
-                hip_angle=NEUTRAL - HIP_SWING,
-                knee_angle=NEUTRAL + KNEE_DOWN
+                hip_angle=HIP_NEUTRAL_MIRROR - HIP_SWING,
+                knee_angle=KNEE_NEUTRAL_MIRROR + KNEE_DOWN
             )
 
             time.sleep(STEP_TIME * 0.5)
