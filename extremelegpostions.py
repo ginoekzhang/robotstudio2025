@@ -30,9 +30,9 @@ except Error as e1:
 
 t = 0
 
-time.sleep(3)
-servo1.move(120)
-servo2.move(120)
+#time.sleep(3)
+#servo1.move(120)
+#servo2.move(120)
 
 time.sleep(3)
 servo3.move(125)
