@@ -21,12 +21,11 @@ HIP_SWING_REAR  = 6     # rear legs push a bit softer
 KNEE_LIFT = 6           # how far knee bends to lift the foot
 KNEE_DOWN = 4           # how much to "push" into the ground from neutral
 
-STEP_TIME = 0.5         # time for one diagonal pair's full cycle (seconds)
+STEP_TIME = 1.0         # time for one diagonal pair's full cycle (seconds)
 PHASE_TIME = STEP_TIME / 4.0  # push, lift, swing, down each get 1/4
 
-# Slight bias of neutral pose: front slightly forward, rear slightly back
-FRONT_GROUND_BIAS = +2
-REAR_GROUND_BIAS  = -2
+# Lean forward: extra angle on both joints of both front legs in neutral/support
+FRONT_NEUTRAL_LEAN = 5  # degrees added to hip and knee on FL/FR in ground pose
 
 # Offsets per servo ID (1–8) – your calibrated values
 OFFSETS = [0, 0, 10, -15, -30, -15, -25, -15]
@@ -106,32 +105,24 @@ def main():
 
     def leg_ground(name: str, t: float):
         """
-        Leg on ground in neutral-ish support configuration,
-        with a slight front-forward / rear-back bias.
+        Leg on ground in neutral-ish support configuration.
+        For FL/FR, add FRONT_NEUTRAL_LEAN to both joints to lean the robot forward.
         """
         hip, knee = leg_servos[name]
 
-        if is_front(name):
-            hip_bias = FRONT_GROUND_BIAS
-        else:
-            hip_bias = REAR_GROUND_BIAS
-
         if is_non_mirror(name):
-            set_leg(
-                hip,
-                knee,
-                HIP_NEUTRAL + hip_bias,
-                KNEE_NEUTRAL + KNEE_DOWN,
-                t,
-            )
+            hip_angle = HIP_NEUTRAL
+            knee_angle = KNEE_NEUTRAL + KNEE_DOWN
         else:
-            set_leg(
-                hip,
-                knee,
-                HIP_NEUTRAL_MIRROR + hip_bias,
-                KNEE_NEUTRAL_MIRROR + KNEE_DOWN,
-                t,
-            )
+            hip_angle = HIP_NEUTRAL_MIRROR
+            knee_angle = KNEE_NEUTRAL_MIRROR + KNEE_DOWN
+
+        # Apply forward lean on front legs (both hip and knee)
+        if is_front(name):
+            hip_angle += FRONT_NEUTRAL_LEAN
+            knee_angle += FRONT_NEUTRAL_LEAN
+
+        set_leg(hip, knee, hip_angle, knee_angle, t)
 
     def leg_push(name: str, t: float):
         """
@@ -143,22 +134,14 @@ def main():
 
         if is_non_mirror(name):
             # non-mirror side: back = minus
-            set_leg(
-                hip,
-                knee,
-                HIP_NEUTRAL - swing,
-                KNEE_NEUTRAL + KNEE_DOWN,
-                t,
-            )
+            hip_angle = HIP_NEUTRAL - swing
+            knee_angle = KNEE_NEUTRAL + KNEE_DOWN
         else:
             # mirror side: back = plus
-            set_leg(
-                hip,
-                knee,
-                HIP_NEUTRAL_MIRROR + swing,
-                KNEE_NEUTRAL_MIRROR + KNEE_DOWN,
-                t,
-            )
+            hip_angle = HIP_NEUTRAL_MIRROR + swing
+            knee_angle = KNEE_NEUTRAL_MIRROR + KNEE_DOWN
+
+        set_leg(hip, knee, hip_angle, knee_angle, t)
 
     def leg_lift(name: str, t: float):
         """
@@ -168,21 +151,13 @@ def main():
         swing = HIP_SWING_FRONT if is_front(name) else HIP_SWING_REAR
 
         if is_non_mirror(name):
-            set_leg(
-                hip,
-                knee,
-                HIP_NEUTRAL - swing,
-                KNEE_NEUTRAL - KNEE_LIFT,
-                t,
-            )
+            hip_angle = HIP_NEUTRAL - swing
+            knee_angle = KNEE_NEUTRAL - KNEE_LIFT
         else:
-            set_leg(
-                hip,
-                knee,
-                HIP_NEUTRAL_MIRROR + swing,
-                KNEE_NEUTRAL_MIRROR - KNEE_LIFT,
-                t,
-            )
+            hip_angle = HIP_NEUTRAL_MIRROR + swing
+            knee_angle = KNEE_NEUTRAL_MIRROR - KNEE_LIFT
+
+        set_leg(hip, knee, hip_angle, knee_angle, t)
 
     def leg_swing(name: str, t: float):
         """
@@ -192,21 +167,13 @@ def main():
         swing = HIP_SWING_FRONT if is_front(name) else HIP_SWING_REAR
 
         if is_non_mirror(name):
-            set_leg(
-                hip,
-                knee,
-                HIP_NEUTRAL + swing,
-                KNEE_NEUTRAL - KNEE_LIFT,
-                t,
-            )
+            hip_angle = HIP_NEUTRAL + swing
+            knee_angle = KNEE_NEUTRAL - KNEE_LIFT
         else:
-            set_leg(
-                hip,
-                knee,
-                HIP_NEUTRAL_MIRROR - swing,
-                KNEE_NEUTRAL_MIRROR - KNEE_LIFT,
-                t,
-            )
+            hip_angle = HIP_NEUTRAL_MIRROR - swing
+            knee_angle = KNEE_NEUTRAL_MIRROR - KNEE_LIFT
+
+        set_leg(hip, knee, hip_angle, knee_angle, t)
 
     def leg_down(name: str, t: float):
         """
@@ -216,21 +183,13 @@ def main():
         swing = HIP_SWING_FRONT if is_front(name) else HIP_SWING_REAR
 
         if is_non_mirror(name):
-            set_leg(
-                hip,
-                knee,
-                HIP_NEUTRAL + swing,
-                KNEE_NEUTRAL + KNEE_DOWN,
-                t,
-            )
+            hip_angle = HIP_NEUTRAL + swing
+            knee_angle = KNEE_NEUTRAL + KNEE_DOWN
         else:
-            set_leg(
-                hip,
-                knee,
-                HIP_NEUTRAL_MIRROR - swing,
-                KNEE_NEUTRAL_MIRROR + KNEE_DOWN,
-                t,
-            )
+            hip_angle = HIP_NEUTRAL_MIRROR - swing
+            knee_angle = KNEE_NEUTRAL_MIRROR + KNEE_DOWN
+
+        set_leg(hip, knee, hip_angle, knee_angle, t)
 
     def support_push(name: str, t: float):
         """
@@ -245,21 +204,18 @@ def main():
             swing = HIP_SWING_REAR / 3.0
 
         if is_non_mirror(name):
-            set_leg(
-                hip,
-                knee,
-                HIP_NEUTRAL - swing,
-                KNEE_NEUTRAL + KNEE_DOWN,
-                t,
-            )
+            hip_angle = HIP_NEUTRAL - swing
+            knee_angle = KNEE_NEUTRAL + KNEE_DOWN
         else:
-            set_leg(
-                hip,
-                knee,
-                HIP_NEUTRAL_MIRROR + swing,
-                KNEE_NEUTRAL_MIRROR + KNEE_DOWN,
-                t,
-            )
+            hip_angle = HIP_NEUTRAL_MIRROR + swing
+            knee_angle = KNEE_NEUTRAL_MIRROR + KNEE_DOWN
+
+        # Lean also applies to support front legs in ground-ish poses
+        if is_front(name):
+            hip_angle += FRONT_NEUTRAL_LEAN
+            knee_angle += FRONT_NEUTRAL_LEAN
+
+        set_leg(hip, knee, hip_angle, knee_angle, t)
 
     def support_forward(name: str, t: float):
         """
@@ -273,21 +229,18 @@ def main():
             swing = HIP_SWING_REAR / 3.0
 
         if is_non_mirror(name):
-            set_leg(
-                hip,
-                knee,
-                HIP_NEUTRAL + swing,
-                KNEE_NEUTRAL + KNEE_DOWN,
-                t,
-            )
+            hip_angle = HIP_NEUTRAL + swing
+            knee_angle = KNEE_NEUTRAL + KNEE_DOWN
         else:
-            set_leg(
-                hip,
-                knee,
-                HIP_NEUTRAL_MIRROR - swing,
-                KNEE_NEUTRAL_MIRROR + KNEE_DOWN,
-                t,
-            )
+            hip_angle = HIP_NEUTRAL_MIRROR - swing
+            knee_angle = KNEE_NEUTRAL_MIRROR + KNEE_DOWN
+
+        # Lean also applies here for front legs
+        if is_front(name):
+            hip_angle += FRONT_NEUTRAL_LEAN
+            knee_angle += FRONT_NEUTRAL_LEAN
+
+        set_leg(hip, knee, hip_angle, knee_angle, t)
 
     # ---------- STAND NEUTRAL ----------
     def stand_neutral():
@@ -297,7 +250,7 @@ def main():
 
     stand_neutral()
     time.sleep(2.0)
-    print("Starting two-leg trot gait with tuned front/rear swing. Ctrl+C to stop.")
+    print("Starting two-leg trot gait with forward-lean neutral. Ctrl+C to stop.")
 
     # Diagonal pairs:
     # Phase A: swing = (FL, BR), support = (FR, BL)
