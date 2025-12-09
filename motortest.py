@@ -21,7 +21,7 @@ servo2.move(35)
 time.sleep(3)
 
 while True:
-    servo1.move(35)
+    servo1.move(75)
     servo2.move(120)
     
     time.sleep(1)
