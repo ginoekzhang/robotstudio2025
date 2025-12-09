@@ -14,14 +14,22 @@ except ServoTimeoutError as e:
     quit()
 
 t = 0
-while True:
-    servo1.move(0)
-    time.sleep(3)
-    servo1.move(240)
-    time.sleep(3)
-    servo1.move(120)
-    time.sleep(3)
+
+servo1.move(0)
+time.sleep(3)
+servo1.move(240)
+time.sleep(3)
+servo1.move(120)
+time.sleep(3)
+
+#while True:
+#    servo1.move(0)
+#    time.sleep(3)
+#    servo1.move(240)
+#    time.sleep(3)
+#    servo1.move(120)
+#    time.sleep(3)
     #servo2.move(205)
 
-    time.sleep(3)
+#    time.sleep(3)
     #t += 0.1
