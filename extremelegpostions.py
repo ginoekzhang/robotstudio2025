@@ -23,7 +23,7 @@ try:
     servo8.set_angle_limits(0, 240)
 
         
-    servo3.set_angle_offset(10)
+    servo3.set_angle_offset(+10)
     servo4.set_angle_offset(-15)
     
     servo5.set_angle_offset(-25)
@@ -40,6 +40,15 @@ except Error as e1:
     quit()
 
 t = 0
+
+servo3.set_angle_offset(+10)
+servo4.set_angle_offset(-15)
+
+servo5.set_angle_offset(-25)
+servo6.set_angle_offset(-20)
+
+servo7.set_angle_offset(-25)
+servo8.set_angle_offset(-15)
 
 time.sleep(3)
 servo1.move(120)
