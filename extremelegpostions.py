@@ -21,6 +21,17 @@ try:
     servo6.set_angle_limits(0, 240)
     servo7.set_angle_limits(0, 240)
     servo8.set_angle_limits(0, 240)
+
+        
+    servo3.set_angle_offset(10)
+    servo4.set_angle_offset(-15)
+    
+    servo5.set_angle_offset(-25)
+    servo6.set_angle_offset(-20)
+    
+    servo7.set_angle_offset(-25)
+    servo8.set_angle_offset(-15)
+
 except ServoTimeoutError as e:
     print(f"Servo {e.id_} is not responding. Exiting...")
     quit()
@@ -35,14 +46,14 @@ servo1.move(120)
 servo2.move(120)
 
 time.sleep(3)
-servo3.move(130)
-servo4.move(105)
+servo3.move(120)
+servo4.move(120)
 
 time.sleep(3)
-servo5.move(95)
-servo6.move(100)
+servo5.move(120)
+servo6.move(120)
 
 time.sleep(3)
-servo7.move(95)
-servo8.move(105)
+servo7.move(120)
+servo8.move(120)
 time.sleep(3)
