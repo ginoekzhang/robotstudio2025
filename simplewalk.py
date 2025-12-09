@@ -15,15 +15,15 @@ MIN_ANGLE = 40
 MAX_ANGLE = 200
 
 # FL and BR are +forward, FR and BL are -forward
-HIP_SWING = 20         # hip forward/back offset from neutral
-KNEE_LIFT = 15         # how far knee bends to lift the foot
-KNEE_DOWN = 5         # how much to "push" into the ground from neutral
+HIP_SWING = 10         # hip forward/back offset from neutral
+KNEE_LIFT = 6         # how far knee bends to lift the foot
+KNEE_DOWN = 4         # how much to "push" into the ground from neutral
 
 STEP_TIME = 1       # time for one leg-group step (seconds)
 PHASE_TIME = STEP_TIME / 4.0  # push, lift, swing, down each get 1/4
 
 # Offsets per servo ID (1–8)
-OFFSETS = [0, 0, 10, -15, -25, -20, -25, -15]
+OFFSETS = [0, 0, 10, -15, -25, -15, -25, -15]
 
 # Servo IDs:
 # front left leg: [1 (hip), 2 (knee)]
