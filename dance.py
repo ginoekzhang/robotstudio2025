@@ -55,7 +55,7 @@ while True:
     servo7.move(145, 200)
     servo8.move(35, 200)
 
-    time.sleep(1)
+    time.sleep(0.5)
 
     servo5.move(70)
     servo6.move(135)
@@ -63,7 +63,7 @@ while True:
     servo7.move(115)
     servo8.move(70)
 
-    time.sleep(1)
+    time.sleep(0.5)
 
 
 
