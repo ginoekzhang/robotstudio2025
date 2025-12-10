@@ -30,7 +30,7 @@ except Error as e1:
     print(f"Unexpected Error with servo {e.id_}. Exiting...")
     quit()
 
-t = 1000
+t = 1
 
 #OFFSETS = [0, 0, 10, -15, -30, -15, -25, -15]
 
@@ -49,12 +49,12 @@ servo8.move(70)
 time.sleep(3)
 
 while True:
-  servo5.move(60, t)
-  servo6.move(125, t)
+  servo5.move(90, t)
+  servo6.move(150, t)
   time.sleep(1)
 
-  servo7.move(105, t)
-  servo8.move(60, t)
+  servo7.move(95, t)
+  servo8.move(55, t)
   time.sleep(1)
 
   
